@@ -13,6 +13,7 @@
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
 #include "EmulationStation.h"
+#include "Scripting.h"
 #include "SystemData.h"
 #include "VolumeControl.h"
 #include <SDL_events.h>
@@ -55,6 +56,8 @@ void GuiMenu::openScraperSettings()
 	// scrape from
 	auto scraper_list = std::make_shared< OptionListComponent< std::string > >(mWindow, "SCRAPE FROM", false);
 	std::vector<std::string> scrapers = getScraperList();
+
+	// Select either the first entry of the one read from the settings, just in case the scraper from settings has vanished.
 	for(auto it = scrapers.cbegin(); it != scrapers.cend(); it++)
 		scraper_list->add(*it, *it, *it == Settings::getInstance()->getString("Scraper"));
 
@@ -99,31 +102,31 @@ void GuiMenu::openSoundSettings()
 		// audio card
 		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO CARD", false);
 		std::vector<std::string> audio_cards;
-    #ifdef _RPI_
-                // RPi Specific  Audio Cards
-                audio_cards.push_back("local");
-                audio_cards.push_back("hdmi");
-                audio_cards.push_back("both");
-    #endif
-                audio_cards.push_back("default");
-                audio_cards.push_back("sysdefault");
-                audio_cards.push_back("dmix");
-                audio_cards.push_back("hw");
-                audio_cards.push_back("plughw");
-                audio_cards.push_back("null");
-                if (Settings::getInstance()->getString("AudioCard") != "") {
-                        if(std::find(audio_cards.begin(), audio_cards.end(), Settings::getInstance()->getString("AudioCard")) == audio_cards.end()) {
-                                audio_cards.push_back(Settings::getInstance()->getString("AudioCard"));
-                        }
-                }
-                for(auto ac = audio_cards.cbegin(); ac != audio_cards.cend(); ac++)
-                        audio_card->add(*ac, *ac, Settings::getInstance()->getString("AudioCard") == *ac);
-                s->addWithLabel("AUDIO CARD", audio_card);
-                s->addSaveFunc([audio_card] {
-                        Settings::getInstance()->setString("AudioCard", audio_card->getSelected());
-                        VolumeControl::getInstance()->deinit();
-                        VolumeControl::getInstance()->init();
-                });
+	#ifdef _RPI_
+		// RPi Specific  Audio Cards
+		audio_cards.push_back("local");
+		audio_cards.push_back("hdmi");
+		audio_cards.push_back("both");
+	#endif
+		audio_cards.push_back("default");
+		audio_cards.push_back("sysdefault");
+		audio_cards.push_back("dmix");
+		audio_cards.push_back("hw");
+		audio_cards.push_back("plughw");
+		audio_cards.push_back("null");
+		if (Settings::getInstance()->getString("AudioCard") != "") {
+			if(std::find(audio_cards.begin(), audio_cards.end(), Settings::getInstance()->getString("AudioCard")) == audio_cards.end()) {
+				audio_cards.push_back(Settings::getInstance()->getString("AudioCard"));
+			}
+		}
+		for(auto ac = audio_cards.cbegin(); ac != audio_cards.cend(); ac++)
+			audio_card->add(*ac, *ac, Settings::getInstance()->getString("AudioCard") == *ac);
+		s->addWithLabel("AUDIO CARD", audio_card);
+		s->addSaveFunc([audio_card] {
+			Settings::getInstance()->setString("AudioCard", audio_card->getSelected());
+			VolumeControl::getInstance()->deinit();
+			VolumeControl::getInstance()->init();
+		});
 
 		// volume control device
 		auto vol_dev = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO DEVICE", false);
@@ -133,11 +136,11 @@ void GuiMenu::openSoundSettings()
 		transitions.push_back("Master");
 		transitions.push_back("Digital");
 		transitions.push_back("Analogue");
-                if (Settings::getInstance()->getString("AudioDevice") != "") {
-                        if(std::find(transitions.begin(), transitions.end(), Settings::getInstance()->getString("AudioDevice")) == transitions.end()) {
-                                transitions.push_back(Settings::getInstance()->getString("AudioDevice"));
-                        }
-                }
+		if (Settings::getInstance()->getString("AudioDevice") != "") {
+			if(std::find(transitions.begin(), transitions.end(), Settings::getInstance()->getString("AudioDevice")) == transitions.end()) {
+				transitions.push_back(Settings::getInstance()->getString("AudioDevice"));
+			}
+		}
 		for(auto it = transitions.cbegin(); it != transitions.cend(); it++)
 			vol_dev->add(*it, *it, Settings::getInstance()->getString("AudioDevice") == *it);
 		s->addWithLabel("AUDIO DEVICE", vol_dev);
@@ -171,18 +174,18 @@ void GuiMenu::openSoundSettings()
 #ifdef _RPI_
 		// OMX player Audio Device
 		auto omx_audio_dev = std::make_shared< OptionListComponent<std::string> >(mWindow, "OMX PLAYER AUDIO DEVICE", false);
-                std::vector<std::string> omx_cards;
-                // RPi Specific  Audio Cards
-                omx_cards.push_back("local");
-                omx_cards.push_back("hdmi");
-                omx_cards.push_back("both");
-                omx_cards.push_back("alsa:hw:0,0");
-                omx_cards.push_back("alsa:hw:1,0");
-                if (Settings::getInstance()->getString("OMXAudioDev") != "") {
-                        if (std::find(omx_cards.begin(), omx_cards.end(), Settings::getInstance()->getString("OMXAudioDev")) == omx_cards.end()) {
-                                omx_cards.push_back(Settings::getInstance()->getString("OMXAudioDev"));
-                        }
-                }
+		std::vector<std::string> omx_cards;
+		// RPi Specific  Audio Cards
+		omx_cards.push_back("local");
+		omx_cards.push_back("hdmi");
+		omx_cards.push_back("both");
+		omx_cards.push_back("alsa:hw:0,0");
+		omx_cards.push_back("alsa:hw:1,0");
+		if (Settings::getInstance()->getString("OMXAudioDev") != "") {
+			if (std::find(omx_cards.begin(), omx_cards.end(), Settings::getInstance()->getString("OMXAudioDev")) == omx_cards.end()) {
+				omx_cards.push_back(Settings::getInstance()->getString("OMXAudioDev"));
+			}
+		}
 		for (auto it = omx_cards.cbegin(); it != omx_cards.cend(); it++)
 			omx_audio_dev->add(*it, *it, Settings::getInstance()->getString("OMXAudioDev") == *it);
 		s->addWithLabel("OMX PLAYER AUDIO DEVICE", omx_audio_dev);
@@ -294,13 +297,15 @@ void GuiMenu::openUISettings()
 		s->addSaveFunc([window, theme_set]
 		{
 			bool needReload = false;
-			if(Settings::getInstance()->getString("ThemeSet") != theme_set->getSelected())
+			std::string oldTheme = Settings::getInstance()->getString("ThemeSet");
+			if(oldTheme != theme_set->getSelected())
 				needReload = true;
 
 			Settings::getInstance()->setString("ThemeSet", theme_set->getSelected());
 
 			if(needReload)
 			{
+				Scripting::fireEvent("theme-changed", theme_set->getSelected(), oldTheme);
 				CollectionSystemManager::get()->updateSystemsList();
 				ViewController::get()->goToStart();
 				ViewController::get()->reloadAll(); // TODO - replace this with some sort of signal-based implementation
@@ -405,13 +410,16 @@ void GuiMenu::openOtherSettings()
 	s->addWithLabel("PARSE GAMESLISTS ONLY", parse_gamelists);
 	s->addSaveFunc([parse_gamelists] { Settings::getInstance()->setBool("ParseGamelistOnly", parse_gamelists->getState()); });
 
-#ifndef WIN32
+	auto local_art = std::make_shared<SwitchComponent>(mWindow);
+	local_art->setState(Settings::getInstance()->getBool("LocalArt"));
+	s->addWithLabel("SEARCH FOR LOCAL ART", local_art);
+	s->addSaveFunc([local_art] { Settings::getInstance()->setBool("LocalArt", local_art->getState()); });
+
 	// hidden files
 	auto hidden_files = std::make_shared<SwitchComponent>(mWindow);
 	hidden_files->setState(Settings::getInstance()->getBool("ShowHiddenFiles"));
 	s->addWithLabel("SHOW HIDDEN FILES", hidden_files);
 	s->addSaveFunc([hidden_files] { Settings::getInstance()->setBool("ShowHiddenFiles", hidden_files->getState()); });
-#endif
 
 #ifdef _RPI_
 	// Video Player - VideoOmxPlayer
@@ -467,6 +475,7 @@ void GuiMenu::openQuitMenu()
 		row.makeAcceptInputHandler([window] {
 			window->pushGui(new GuiMsgBox(window, "REALLY RESTART?", "YES",
 				[] {
+				Scripting::fireEvent("quit");
 				if(quitES("/tmp/es-restart") != 0)
 					LOG(LogWarning) << "Restart terminated with non-zero result!";
 			}, "NO", nullptr));
@@ -482,9 +491,8 @@ void GuiMenu::openQuitMenu()
 			row.makeAcceptInputHandler([window] {
 				window->pushGui(new GuiMsgBox(window, "REALLY QUIT?", "YES",
 					[] {
-					SDL_Event ev;
-					ev.type = SDL_QUIT;
-					SDL_PushEvent(&ev);
+					Scripting::fireEvent("quit");
+					quitES("");
 				}, "NO", nullptr));
 			});
 			row.addElement(std::make_shared<TextComponent>(window, "QUIT EMULATIONSTATION", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
@@ -495,6 +503,8 @@ void GuiMenu::openQuitMenu()
 	row.makeAcceptInputHandler([window] {
 		window->pushGui(new GuiMsgBox(window, "REALLY RESTART?", "YES",
 			[] {
+			Scripting::fireEvent("quit", "reboot");
+			Scripting::fireEvent("reboot");
 			if (quitES("/tmp/es-sysrestart") != 0)
 				LOG(LogWarning) << "Restart terminated with non-zero result!";
 		}, "NO", nullptr));
@@ -506,6 +516,8 @@ void GuiMenu::openQuitMenu()
 	row.makeAcceptInputHandler([window] {
 		window->pushGui(new GuiMsgBox(window, "REALLY SHUTDOWN?", "YES",
 			[] {
+			Scripting::fireEvent("quit", "shutdown");
+			Scripting::fireEvent("shutdown");
 			if (quitES("/tmp/es-shutdown") != 0)
 				LOG(LogWarning) << "Shutdown terminated with non-zero result!";
 		}, "NO", nullptr));
