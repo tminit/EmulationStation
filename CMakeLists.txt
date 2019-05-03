@@ -13,6 +13,17 @@ LIST(APPEND CMAKE_MODULE_PATH
 )
 
 #-------------------------------------------------------------------------------
+#detect specific architectures and set variables
+execute_process(COMMAND uname -a OUTPUT_VARIABLE UNAME_ALL)
+if(EXISTS "${CMAKE_FIND_ROOT_PATH}/opt/vc/include/bcm_host.h")
+    set(RPI found)
+elseif(EXISTS "${CMAKE_FIND_ROOT_PATH}/opt/vero3/lib/libMali.so")
+    set(VERO4K found)
+elseif(UNAME_ALL MATCHES "[oO][dD][rR][oO][iI][dD]")
+    set(ODROID found)
+endif()
+
+#-------------------------------------------------------------------------------
 #set up OpenGL system variable
 if(GLES)
     set(GLSystem "OpenGL ES" CACHE STRING "The OpenGL system to be used")
@@ -67,13 +78,16 @@ endif()
 
 #-------------------------------------------------------------------------------
 #set up compiler flags and excutable names
-if(DEFINED BCMHOST)
+if(DEFINED RPI)
     add_definitions(-D_RPI_)
 endif()
 
 if(DEFINED VERO4K)
     add_definitions(-D_VERO4K_)
 endif()
+
+if(DEFINED ODROID)
+    add_definitions(-D_ODROID_)
 
 if(DEFINED libCEC_FOUND)
     add_definitions(-DHAVE_LIBCEC)

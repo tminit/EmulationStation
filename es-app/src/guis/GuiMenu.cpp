@@ -103,10 +103,15 @@ void GuiMenu::openSoundSettings()
 		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO CARD", false);
 		std::vector<std::string> audio_cards;
 	#ifdef _RPI_
-		// RPi Specific  Audio Cards
+		// RPi Specific Audio Cards
 		audio_cards.push_back("local");
 		audio_cards.push_back("hdmi");
 		audio_cards.push_back("both");
+	#endif
+	#ifdef _ODROID__
+		// Odroid Specific Audio Cards
+		audio_cards.push_back("ODROIDHDMI"); // Standard HDMI sound
+		audio_cards.push_back("ODROIDDAC"); // Hifi-Shield, Hifi Shield+ and Stereo Boom Bonnet
 	#endif
 		audio_cards.push_back("default");
 		audio_cards.push_back("sysdefault");
